@@ -87,6 +87,12 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           icon: IconBarcode,
           path: '/mantenimiento/variantes',
           color: 'teal'
+        },
+        {
+          label: 'Ubicaciones',
+          icon: IconMapPin,
+          path: '/mantenimiento/ubicaciones',
+          color: 'teal'
         }
       ]
     },

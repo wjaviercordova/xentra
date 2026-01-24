@@ -13,7 +13,8 @@ import {
   CategoriasManagement,
   ProveedoresManagement,
   ProductosManagement,
-  VariantesManagement
+  VariantesManagement,
+  UbicacionesManagement
 } from './components/Mantenimiento'
 
 const App: React.FC = () => {
@@ -54,6 +55,7 @@ const App: React.FC = () => {
         <Route path="/mantenimiento/proveedores" element={<ProveedoresManagement />} />
         <Route path="/mantenimiento/productos" element={<ProductosManagement />} />
         <Route path="/mantenimiento/variantes" element={<VariantesManagement />} />
+        <Route path="/mantenimiento/ubicaciones" element={<UbicacionesManagement />} />
         
         {/* Otros módulos */}
         <Route path="/inventario" element={<div>Módulo de Inventario (Por implementar)</div>} />
