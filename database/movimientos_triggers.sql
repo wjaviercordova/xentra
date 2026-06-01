@@ -1,12 +1,12 @@
 -- =====================================================
--- XENTRA - Lógica de Kardex Universal
+-- XENTRA - Lógica de Movimientos de Inventario Universal
 -- Trigger para Actualización Automática de Stock
 -- =====================================================
 
 -- =====================================================
 -- FUNCIÓN: Actualizar Stock Automáticamente
 -- =====================================================
-CREATE OR REPLACE FUNCTION actualizar_stock_kardex()
+CREATE OR REPLACE FUNCTION actualizar_stock_movimientos()
 RETURNS TRIGGER AS $$
 DECLARE
     v_motivo_es_adicion BOOLEAN;
@@ -100,11 +100,11 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 -- =====================================================
 -- TRIGGER: Aplicar actualización de stock después de INSERT
 -- =====================================================
-DROP TRIGGER IF EXISTS trigger_actualizar_stock_kardex ON public.movimientos_detalle;
-CREATE TRIGGER trigger_actualizar_stock_kardex
+DROP TRIGGER IF EXISTS trigger_actualizar_stock_movimientos ON public.movimientos_detalle;
+CREATE TRIGGER trigger_actualizar_stock_movimientos
     AFTER INSERT ON public.movimientos_detalle
     FOR EACH ROW
-    EXECUTE FUNCTION actualizar_stock_kardex();
+    EXECUTE FUNCTION actualizar_stock_movimientos();
 
 -- =====================================================
 -- FUNCIÓN: Validar Stock antes de Transferencias
@@ -132,7 +132,7 @@ BEGIN
             RAISE EXCEPTION 'Stock insuficiente en ubicación de origen para procesar la transferencia';
         END LOOP;
 
-        -- Si llegamos aquí, hay stock suficiente. Crear movimientos de kardex
+        -- Si llegamos aquí, hay stock suficiente. Crear movimientos de inventario
         -- Primero crear la cabecera de salida (ubicación origen)
         INSERT INTO public.movimientos_cabecera (
             empresa_id,
@@ -283,9 +283,9 @@ INSERT INTO public.motivos_movimiento (empresa_id, codigo, nombre, es_adicion, r
 */
 
 -- =====================================================
--- FUNCIÓN AUXILIAR: Consultar Kardex de una Variante
+-- FUNCIÓN AUXILIAR: Consultar Movimientos de una Variante
 -- =====================================================
-CREATE OR REPLACE FUNCTION consultar_kardex_variante(
+CREATE OR REPLACE FUNCTION consultar_movimientos_variante(
     p_empresa_id UUID,
     p_variante_id UUID,
     p_ubicacion_id UUID DEFAULT NULL,
@@ -304,7 +304,7 @@ RETURNS TABLE (
 ) AS $$
 BEGIN
     RETURN QUERY
-    WITH kardex_movimientos AS (
+    WITH movimientos_inventario AS (
         SELECT 
             mc.fecha_movimiento,
             mm.nombre as motivo,
@@ -323,12 +323,12 @@ BEGIN
           AND (p_fecha_hasta IS NULL OR mc.fecha_movimiento::DATE <= p_fecha_hasta)
         ORDER BY mc.fecha_movimiento, mc.created_at
     ),
-    kardex_con_saldo AS (
+    movimientos_con_saldo AS (
         SELECT 
             km.*,
             SUM(CASE WHEN es_entrada THEN cantidad ELSE -cantidad END) 
                 OVER (ORDER BY rn ROWS UNBOUNDED PRECEDING) as saldo_cantidad
-        FROM kardex_movimientos km
+        FROM movimientos_inventario km
     )
     SELECT 
         kcs.fecha_movimiento,
@@ -340,7 +340,7 @@ BEGIN
         kcs.saldo_cantidad,
         -- Obtener costo promedio actual
         COALESCE(sa.costo_promedio, 0)
-    FROM kardex_con_saldo kcs
+    FROM movimientos_con_saldo kcs
     LEFT JOIN public.stock_actual sa ON (
         sa.empresa_id = p_empresa_id 
         AND sa.variante_id = p_variante_id

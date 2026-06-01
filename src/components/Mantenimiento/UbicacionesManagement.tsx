@@ -30,6 +30,8 @@ import {
 } from '@tabler/icons-react'
 import { supabase, type Ubicacion } from '@/lib/supabase'
 import { useAuthStore } from '@/stores'
+import { NotificationManager } from '@/utils/notifications'
+import { supabaseCache, useCachedQuery } from '@/utils/supabaseCache'
 
 interface UbicacionForm {
   nombre: string
@@ -75,23 +77,26 @@ export default function UbicacionesManagement() {
 
     try {
       setLoading(true)
-      const { data, error } = await supabase
-        .from('ubicaciones')
-        .select('*')
-        .eq('empresa_id', empresaActual.id)
-        .order('nombre')
+      const data = await useCachedQuery(
+        async () => {
+          const { data, error } = await supabase
+            .from('ubicaciones')
+            .select('*')
+            .eq('empresa_id', empresaActual.id)
+            .order('nombre')
 
-      if (error) throw error
+          if (error) throw error
+          return data || []
+        },
+        'ubicaciones',
+        { empresa_id: empresaActual.id },
+        5 * 60 * 1000 // Cache por 5 minutos
+      )
 
-      setUbicaciones(data || [])
+      setUbicaciones(data)
     } catch (error) {
       console.error('Error cargando ubicaciones:', error)
-      notifications.show({
-        title: 'Error',
-        message: 'No se pudieron cargar las ubicaciones',
-        color: 'red',
-        icon: <IconX size={16} />
-      })
+      NotificationManager.error('Error', 'No se pudieron cargar las ubicaciones')
     } finally {
       setLoading(false)
     }
@@ -146,74 +151,65 @@ export default function UbicacionesManagement() {
         es_principal: values.es_principal === true ? true : null
       }
 
-      // Si se marca como principal, desmarcar otras ubicaciones principales primero
-      if (values.es_principal === true) {
-        const { error: errorDesmarcar } = await supabase
-          .from('ubicaciones')
-          .update({ es_principal: null })
-          .eq('empresa_id', empresaActual.id)
-          .eq('es_principal', true)
-          .neq('id', editingUbicacion?.id || 'nuevo-registro')
+      await NotificationManager.loading(
+        editingUbicacion ? 'Actualizando ubicación...' : 'Creando ubicación...',
+        async () => {
+          // Si se marca como principal, desmarcar otras ubicaciones principales primero
+          if (values.es_principal === true) {
+            const { error: errorDesmarcar } = await supabase
+              .from('ubicaciones')
+              .update({ es_principal: null })
+              .eq('empresa_id', empresaActual.id)
+              .eq('es_principal', true)
+              .neq('id', editingUbicacion?.id || 'nuevo-registro')
 
-        if (errorDesmarcar) {
-          console.warn('Advertencia desmarcando ubicaciones principales:', errorDesmarcar)
+            if (errorDesmarcar) {
+              console.warn('Advertencia desmarcando ubicaciones principales:', errorDesmarcar)
+            }
+          }
+
+          if (editingUbicacion) {
+            // Actualizar
+            const { error } = await supabase
+              .from('ubicaciones')
+              .update({
+                ...datosUbicacion,
+                updated_at: new Date().toISOString()
+              })
+              .eq('id', editingUbicacion.id)
+
+            if (error) throw error
+          } else {
+            // Crear nuevo
+            const { error } = await supabase
+              .from('ubicaciones')
+              .insert({
+                ...datosUbicacion,
+                empresa_id: empresaActual.id
+              })
+
+            if (error) throw error
+          }
+        },
+        {
+          success: `Ubicación ${editingUbicacion ? 'actualizada' : 'creada'} correctamente`,
+          error: (error: any) => {
+            let mensajeError = 'No se pudo guardar la ubicación'
+            if (error.code === '23505') {
+              mensajeError = 'Ya existe una ubicación principal para esta empresa. Desmarca la actual primero.'
+            }
+            return mensajeError
+          }
         }
-      }
+      )
 
-      if (editingUbicacion) {
-        // Actualizar
-        const { error } = await supabase
-          .from('ubicaciones')
-          .update({
-            ...datosUbicacion,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', editingUbicacion.id)
-
-        if (error) throw error
-
-        notifications.show({
-          title: 'Éxito',
-          message: 'Ubicación actualizada correctamente',
-          color: 'green',
-          icon: <IconCheck size={16} />
-        })
-      } else {
-        // Crear nuevo
-        const { error } = await supabase
-          .from('ubicaciones')
-          .insert({
-            ...datosUbicacion,
-            empresa_id: empresaActual.id
-          })
-
-        if (error) throw error
-
-        notifications.show({
-          title: 'Éxito',
-          message: 'Ubicación creada correctamente',
-          color: 'green',
-          icon: <IconCheck size={16} />
-        })
-      }
+      // Invalidar cache
+      supabaseCache.invalidateTable('ubicaciones')
 
       cargarUbicaciones()
       cerrarModal()
     } catch (error) {
       console.error('Error guardando ubicación:', error)
-      
-      // Mensaje de error más específico
-      let mensajeError = 'No se pudo guardar la ubicación'
-      if (error.code === '23505') {
-        mensajeError = 'Ya existe una ubicación principal para esta empresa. Desmarca la actual primero.'
-      }
-      
-      notifications.show({
-        title: 'Error',
-        message: mensajeError,
-        color: 'red',
-        icon: <IconX size={16} />
-      })
     }
   }
 
@@ -225,28 +221,27 @@ export default function UbicacionesManagement() {
       confirmProps: { color: 'red' },
       onConfirm: async () => {
         try {
-          const { error } = await supabase
-            .from('ubicaciones')
-            .delete()
-            .eq('id', ubicacion.id)
+          await NotificationManager.loading(
+            'Eliminando ubicación...',
+            supabase
+              .from('ubicaciones')
+              .delete()
+              .eq('id', ubicacion.id)
+              .then(({ error }) => {
+                if (error) throw error
+              }),
+            {
+              success: 'Ubicación eliminada correctamente',
+              error: 'No se pudo eliminar la ubicación'
+            }
+          )
 
-          if (error) throw error
-
-          notifications.show({
-            title: 'Éxito',
-            message: 'Ubicación eliminada correctamente',
-            color: 'green',
-            icon: <IconCheck size={16} />
-          })
+          // Invalidar cache
+          supabaseCache.invalidateTable('ubicaciones')
+          
           cargarUbicaciones()
         } catch (error) {
           console.error('Error eliminando ubicación:', error)
-          notifications.show({
-            title: 'Error',
-            message: 'No se pudo eliminar la ubicación',
-            color: 'red',
-            icon: <IconX size={16} />
-          })
         }
       }
     })

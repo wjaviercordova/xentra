@@ -40,6 +40,8 @@ import { useForm } from '@mantine/form'
 import { notifications } from '@mantine/notifications'
 import { supabase } from '@/lib/supabase'
 import { useAuthStore } from '@/stores'
+import { NotificationManager } from '@/utils/notifications'
+import { supabaseCache, useCachedQuery } from '@/utils/supabaseCache'
 
 interface Categoria {
   id: string
@@ -117,15 +119,24 @@ const ProductosManagement: React.FC = () => {
     if (!empresaActual?.id) return
     
     try {
-      const { data, error } = await supabase
-        .from('categorias')
-        .select('id, nombre')
-        .eq('empresa_id', empresaActual.id)
-        .eq('activo', true)
-        .order('nombre', { ascending: true })
+      const data = await useCachedQuery(
+        async () => {
+          const { data, error } = await supabase
+            .from('categorias')
+            .select('id, nombre')
+            .eq('empresa_id', empresaActual.id)
+            .eq('activo', true)
+            .order('nombre', { ascending: true })
 
-      if (error) throw error
-      setCategorias(data || [])
+          if (error) throw error
+          return data || []
+        },
+        'categorias',
+        { empresa_id: empresaActual.id, activo: true },
+        5 * 60 * 1000 // Cache por 5 minutos
+      )
+      
+      setCategorias(data)
     } catch (error: any) {
       console.error('Error cargando categorías:', error)
     }
@@ -135,15 +146,24 @@ const ProductosManagement: React.FC = () => {
     if (!empresaActual?.id) return
     
     try {
-      const { data, error } = await supabase
-        .from('proveedores')
-        .select('id, nombre')
-        .eq('empresa_id', empresaActual.id)
-        .eq('activo', true)
-        .order('nombre', { ascending: true })
+      const data = await useCachedQuery(
+        async () => {
+          const { data, error } = await supabase
+            .from('proveedores')
+            .select('id, nombre')
+            .eq('empresa_id', empresaActual.id)
+            .eq('activo', true)
+            .order('nombre', { ascending: true })
 
-      if (error) throw error
-      setProveedores(data || [])
+          if (error) throw error
+          return data || []
+        },
+        'proveedores',
+        { empresa_id: empresaActual.id, activo: true },
+        5 * 60 * 1000 // Cache por 5 minutos
+      )
+      
+      setProveedores(data)
     } catch (error: any) {
       console.error('Error cargando proveedores:', error)
     }
@@ -154,29 +174,34 @@ const ProductosManagement: React.FC = () => {
     
     setLoading(true)
     try {
-      const { data, error } = await supabase
-        .from('productos')
-        .select(`
-          *,
-          categoria:categorias(nombre),
-          proveedor:proveedores(nombre),
-          variantes(
-            id, sku, nombre, precio_compra, precio_venta,
-            stock:stock_actual(cantidad_actual)
-          )
-        `)
-        .eq('empresa_id', empresaActual.id)
-        .order('nombre', { ascending: true })
+      const data = await useCachedQuery(
+        async () => {
+          const { data, error } = await supabase
+            .from('productos')
+            .select(`
+              *,
+              categoria:categorias(nombre),
+              proveedor:proveedores(nombre),
+              variantes(
+                id, sku, nombre, precio_compra, precio_venta,
+                stock:stock_actual(cantidad_actual)
+              )
+            `)
+            .eq('empresa_id', empresaActual.id)
+            .order('nombre', { ascending: true })
 
-      if (error) throw error
-      setProductos(data || [])
+          if (error) throw error
+          return data || []
+        },
+        'productos',
+        { empresa_id: empresaActual.id },
+        3 * 60 * 1000 // Cache por 3 minutos
+      )
+      
+      setProductos(data)
     } catch (error: any) {
-      notifications.show({
-        title: 'Error',
-        message: error.message,
-        color: 'red',
-        icon: <IconX />
-      })
+      NotificationManager.error('Error', 'No se pudieron cargar los productos')
+      console.error('Error cargando productos:', error)
     } finally {
       setLoading(false)
     }
@@ -185,100 +210,101 @@ const ProductosManagement: React.FC = () => {
   const guardarProducto = async (values: typeof form.values) => {
     if (!empresaActual?.id) return
 
-    setLoading(true)
     try {
       const productoData = {
         ...values,
         empresa_id: empresaActual.id
       }
 
-      let error
       if (editingProducto) {
         // Actualizar
-        const result = await supabase
-          .from('productos')
-          .update(productoData)
-          .eq('id', editingProducto.id)
-        error = result.error
+        await NotificationManager.loading(
+          'Actualizando producto...',
+          supabase
+            .from('productos')
+            .update(productoData)
+            .eq('id', editingProducto.id)
+            .then(({ error }) => {
+              if (error) throw error
+            }),
+          {
+            success: 'Producto actualizado exitosamente',
+            error: 'No se pudo actualizar el producto'
+          }
+        )
       } else {
         // Crear - también crear variante principal automáticamente
-        const { data: productoCreado, error: errorProducto } = await supabase
-          .from('productos')
-          .insert(productoData)
-          .select()
-          .single()
-        
-        if (errorProducto) throw errorProducto
+        await NotificationManager.loading(
+          'Creando producto...',
+          async () => {
+            const { data: productoCreado, error: errorProducto } = await supabase
+              .from('productos')
+              .insert(productoData)
+              .select()
+              .single()
+            
+            if (errorProducto) throw errorProducto
 
-        // Crear variante principal automáticamente
-        const varianteData = {
-          empresa_id: empresaActual.id,
-          producto_id: productoCreado.id,
-          sku: values.codigo,
-          nombre: values.nombre,
-          precio_compra: values.precio_compra,
-          precio_venta: values.precio_venta
-        }
+            // Crear variante principal automáticamente
+            const varianteData = {
+              empresa_id: empresaActual.id,
+              producto_id: productoCreado.id,
+              sku: values.codigo,
+              nombre: values.nombre,
+              precio_compra: values.precio_compra,
+              precio_venta: values.precio_venta
+            }
 
-        const { error: errorVariante } = await supabase
-          .from('variantes')
-          .insert(varianteData)
+            const { error: errorVariante } = await supabase
+              .from('variantes')
+              .insert(varianteData)
 
-        if (errorVariante) throw errorVariante
+            if (errorVariante) throw errorVariante
+          },
+          {
+            success: 'Producto creado exitosamente',
+            error: 'No se pudo crear el producto'
+          }
+        )
       }
 
-      if (error) throw error
-
-      notifications.show({
-        title: 'Éxito',
-        message: `Producto ${editingProducto ? 'actualizado' : 'creado'} exitosamente`,
-        color: 'green',
-        icon: <IconCheck />
-      })
-
+      // Invalidar cache
+      supabaseCache.invalidateTable('productos')
+      supabaseCache.invalidateTable('variantes')
+      
       cerrarModal()
       await cargarProductos()
     } catch (error: any) {
-      notifications.show({
-        title: 'Error',
-        message: error.message,
-        color: 'red',
-        icon: <IconX />
-      })
-    } finally {
-      setLoading(false)
+      console.error('Error guardando producto:', error)
     }
   }
 
   const eliminarProducto = async (producto: Producto) => {
     if (!confirm(`¿Estás seguro de eliminar el producto "${producto.nombre}"?`)) return
 
-    setLoading(true)
     try {
-      const { error } = await supabase
-        .from('productos')
-        .delete()
-        .eq('id', producto.id)
+      await NotificationManager.loading(
+        'Eliminando producto...',
+        supabase
+          .from('productos')
+          .delete()
+          .eq('id', producto.id)
+          .then(({ error }) => {
+            if (error) throw error
+          }),
+        {
+          success: 'Producto eliminado exitosamente',
+          error: 'No se pudo eliminar el producto. Puede tener movimientos asociados.'
+        }
+      )
 
-      if (error) throw error
-
-      notifications.show({
-        title: 'Éxito',
-        message: 'Producto eliminado exitosamente',
-        color: 'green',
-        icon: <IconCheck />
-      })
-
+      // Invalidar cache
+      supabaseCache.invalidateTable('productos')
+      supabaseCache.invalidateTable('variantes')
+      
       await cargarProductos()
     } catch (error: any) {
-      notifications.show({
-        title: 'Error',
-        message: 'No se puede eliminar el producto. Puede tener movimientos asociados.',
-        color: 'red',
-        icon: <IconX />
-      })
-    } finally {
-      setLoading(false)
+      console.error('Error eliminando producto:', error)
     }
   }
 

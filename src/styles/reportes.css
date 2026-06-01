@@ -1,0 +1,340 @@
+/* =====================================================
+   XENTRA - Estilos Adicionales para Reportes
+   ===================================================== */
+
+/* Responsive Design Improvements */
+@media (max-width: 768px) {
+  .reporte-card {
+    padding: 1rem;
+  }
+  
+  .reporte-grid {
+    gap: 0.75rem;
+  }
+  
+  .reporte-table {
+    font-size: 0.875rem;
+  }
+  
+  .reporte-metrics {
+    padding: 0.75rem;
+  }
+  
+  .reporte-filters {
+    gap: 0.5rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .reporte-dashboard {
+    padding: 0.5rem;
+  }
+  
+  .reporte-title {
+    font-size: 1.25rem;
+  }
+  
+  .reporte-metric-value {
+    font-size: 1.5rem;
+  }
+  
+  .reporte-button-group {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  
+  .reporte-button-group button {
+    width: 100%;
+  }
+}
+
+/* Print Styles */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  
+  .reporte-card {
+    border: 1px solid #ddd;
+    box-shadow: none;
+    page-break-inside: avoid;
+  }
+  
+  .reporte-table {
+    font-size: 0.75rem;
+  }
+  
+  .reporte-page-break {
+    page-break-before: always;
+  }
+}
+
+/* Loading Animations */
+.reporte-loading {
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+/* Chart Responsive */
+.reporte-chart-container {
+  position: relative;
+  height: 300px;
+  overflow: hidden;
+}
+
+@media (max-width: 768px) {
+  .reporte-chart-container {
+    height: 250px;
+  }
+}
+
+@media (max-width: 480px) {
+  .reporte-chart-container {
+    height: 200px;
+  }
+}
+
+/* Status Indicators */
+.status-normal {
+  background-color: #d4edda;
+  color: #155724;
+}
+
+.status-warning {
+  background-color: #fff3cd;
+  color: #856404;
+}
+
+.status-danger {
+  background-color: #f8d7da;
+  color: #721c24;
+}
+
+.status-info {
+  background-color: #d1ecf1;
+  color: #0c5460;
+}
+
+/* Export Modal */
+.export-modal {
+  max-width: 500px;
+}
+
+.export-options {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+@media (max-width: 480px) {
+  .export-options {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Metric Cards */
+.metric-card {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.metric-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+/* Progress Bars */
+.rotation-progress {
+  transition: width 0.3s ease;
+}
+
+/* Table Improvements */
+.reporte-table tbody tr:hover {
+  background-color: rgba(0, 0, 0, 0.02);
+}
+
+.reporte-table-sticky-header thead {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background-color: white;
+}
+
+/* Filters Section */
+.filters-section {
+  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+  border-radius: 8px;
+  padding: 1rem;
+  margin-bottom: 1rem;
+}
+
+/* Export Success Animation */
+.export-success {
+  animation: bounce 0.6s ease-in-out;
+}
+
+@keyframes bounce {
+  0%, 20%, 53%, 80%, 100% {
+    transform: translate3d(0, 0, 0);
+  }
+  40%, 43% {
+    transform: translate3d(0, -30px, 0);
+  }
+  70% {
+    transform: translate3d(0, -15px, 0);
+  }
+  90% {
+    transform: translate3d(0, -4px, 0);
+  }
+}
+
+/* Scrollable Areas */
+.scrollable-area {
+  max-height: 400px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: #dee2e6 transparent;
+}
+
+.scrollable-area::-webkit-scrollbar {
+  width: 6px;
+}
+
+.scrollable-area::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.scrollable-area::-webkit-scrollbar-thumb {
+  background-color: #dee2e6;
+  border-radius: 3px;
+}
+
+.scrollable-area::-webkit-scrollbar-thumb:hover {
+  background-color: #adb5bd;
+}
+
+/* Dashboard Grid Layout */
+.dashboard-grid {
+  display: grid;
+  gap: 1rem;
+}
+
+.dashboard-grid-4 {
+  grid-template-columns: repeat(4, 1fr);
+}
+
+.dashboard-grid-3 {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.dashboard-grid-2 {
+  grid-template-columns: repeat(2, 1fr);
+}
+
+.dashboard-grid-1 {
+  grid-template-columns: 1fr;
+}
+
+@media (max-width: 1200px) {
+  .dashboard-grid-4 {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (max-width: 992px) {
+  .dashboard-grid-4,
+  .dashboard-grid-3 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 768px) {
+  .dashboard-grid-4,
+  .dashboard-grid-3,
+  .dashboard-grid-2 {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Loading Skeleton Improvements */
+.skeleton-text {
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: loading 1.5s infinite;
+}
+
+@keyframes loading {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+/* Accessibility Improvements */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Focus Styles */
+.focus-visible:focus {
+  outline: 2px solid #007bff;
+  outline-offset: 2px;
+}
+
+/* High Contrast Mode Support */
+@media (prefers-contrast: high) {
+  .metric-card {
+    border: 2px solid;
+  }
+  
+  .status-normal,
+  .status-warning,
+  .status-danger,
+  .status-info {
+    border: 1px solid;
+  }
+}
+
+/* Reduced Motion Support */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Dark Mode Compatibility */
+@media (prefers-color-scheme: dark) {
+  .filters-section {
+    background: linear-gradient(135deg, #2c2e33 0%, #25262b 100%);
+  }
+  
+  .reporte-table tbody tr:hover {
+    background-color: rgba(255, 255, 255, 0.05);
+  }
+  
+  .reporte-table-sticky-header thead {
+    background-color: #1a1b1e;
+  }
+}

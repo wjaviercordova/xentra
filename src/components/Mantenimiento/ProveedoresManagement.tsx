@@ -33,6 +33,8 @@ import { useForm } from '@mantine/form'
 import { notifications } from '@mantine/notifications'
 import { supabase } from '@/lib/supabase'
 import { useAuthStore } from '@/stores'
+import { NotificationManager } from '@/utils/notifications'
+import { supabaseCache, useCachedQuery } from '@/utils/supabaseCache'
 
 interface Proveedor {
   id: string
@@ -80,21 +82,26 @@ const ProveedoresManagement: React.FC = () => {
     
     setLoading(true)
     try {
-      const { data, error } = await supabase
-        .from('proveedores')
-        .select('*')
-        .eq('empresa_id', empresaActual.id)
-        .order('nombre', { ascending: true })
+      const data = await useCachedQuery(
+        async () => {
+          const { data, error } = await supabase
+            .from('proveedores')
+            .select('*')
+            .eq('empresa_id', empresaActual.id)
+            .order('nombre', { ascending: true })
 
-      if (error) throw error
-      setProveedores(data || [])
+          if (error) throw error
+          return data || []
+        },
+        'proveedores',
+        { empresa_id: empresaActual.id },
+        5 * 60 * 1000 // Cache por 5 minutos
+      )
+      
+      setProveedores(data)
     } catch (error: any) {
-      notifications.show({
-        title: 'Error',
-        message: error.message,
-        color: 'red',
-        icon: <IconX />
-      })
+      NotificationManager.error('Error', 'No se pudieron cargar los proveedores')
+      console.error('Error cargando proveedores:', error)
     } finally {
       setLoading(false)
     }
@@ -103,7 +110,6 @@ const ProveedoresManagement: React.FC = () => {
   const guardarProveedor = async (values: typeof form.values) => {
     if (!empresaActual?.id) return
 
-    setLoading(true)
     try {
       const proveedorData = {
         ...values,
@@ -116,74 +122,63 @@ const ProveedoresManagement: React.FC = () => {
         direccion: values.direccion || null
       }
 
-      let error
-      if (editingProveedor) {
-        // Actualizar
-        const result = await supabase
-          .from('proveedores')
-          .update(proveedorData)
-          .eq('id', editingProveedor.id)
-        error = result.error
-      } else {
-        // Crear
-        const result = await supabase
-          .from('proveedores')
-          .insert(proveedorData)
-        error = result.error
-      }
+      await NotificationManager.loading(
+        editingProveedor ? 'Actualizando proveedor...' : 'Creando proveedor...',
+        editingProveedor ? 
+          supabase
+            .from('proveedores')
+            .update(proveedorData)
+            .eq('id', editingProveedor.id)
+            .then(({ error }) => {
+              if (error) throw error
+            }) :
+          supabase
+            .from('proveedores')
+            .insert(proveedorData)
+            .then(({ error }) => {
+              if (error) throw error
+            }),
+        {
+          success: `Proveedor ${editingProveedor ? 'actualizado' : 'creado'} exitosamente`,
+          error: 'No se pudo guardar el proveedor'
+        }
+      )
 
-      if (error) throw error
-
-      notifications.show({
-        title: 'Éxito',
-        message: `Proveedor ${editingProveedor ? 'actualizado' : 'creado'} exitosamente`,
-        color: 'green',
-        icon: <IconCheck />
-      })
-
+      // Invalidar cache
+      supabaseCache.invalidateTable('proveedores')
+      
       cerrarModal()
       await cargarProveedores()
     } catch (error: any) {
-      notifications.show({
-        title: 'Error',
-        message: error.message,
-        color: 'red',
-        icon: <IconX />
-      })
-    } finally {
-      setLoading(false)
+      console.error('Error guardando proveedor:', error)
     }
   }
 
   const eliminarProveedor = async (proveedor: Proveedor) => {
     if (!confirm(`¿Estás seguro de eliminar el proveedor "${proveedor.nombre}"?`)) return
 
-    setLoading(true)
     try {
-      const { error } = await supabase
-        .from('proveedores')
-        .delete()
-        .eq('id', proveedor.id)
+      await NotificationManager.loading(
+        'Eliminando proveedor...',
+        supabase
+          .from('proveedores')
+          .delete()
+          .eq('id', proveedor.id)
+          .then(({ error }) => {
+            if (error) throw error
+          }),
+        {
+          success: 'Proveedor eliminado exitosamente',
+          error: 'No se pudo eliminar el proveedor. Puede tener movimientos asociados.'
+        }
+      )
 
-      if (error) throw error
-
-      notifications.show({
-        title: 'Éxito',
-        message: 'Proveedor eliminado exitosamente',
-        color: 'green',
-        icon: <IconCheck />
-      })
-
+      // Invalidar cache
+      supabaseCache.invalidateTable('proveedores')
+      
       await cargarProveedores()
     } catch (error: any) {
-      notifications.show({
-        title: 'Error',
-        message: 'No se puede eliminar el proveedor. Puede tener movimientos asociados.',
-        color: 'red',
-        icon: <IconX />
-      })
-    } finally {
-      setLoading(false)
+      console.error('Error eliminando proveedor:', error)
     }
   }
 

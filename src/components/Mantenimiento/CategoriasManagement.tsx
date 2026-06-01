@@ -29,9 +29,12 @@ import {
   IconX
 } from '@tabler/icons-react'
 import { useForm } from '@mantine/form'
-import { notifications } from '@mantine/notifications'
+import { modals } from '@mantine/modals'
 import { supabase } from '@/lib/supabase'
 import { useAuthStore } from '@/stores'
+import { NotificationManager } from '@/utils/notifications'
+import { useCachedQuery, supabaseCache } from '@/utils/supabaseCache'
+import { TableSkeleton } from '@/components/UI/LoadingStates'
 
 interface Categoria {
   id: string
@@ -73,21 +76,26 @@ const CategoriasManagement: React.FC = () => {
     
     setLoading(true)
     try {
-      const { data, error } = await supabase
-        .from('categorias')
-        .select('*')
-        .eq('empresa_id', empresaActual.id)
-        .order('orden', { ascending: true })
+      const data = await useCachedQuery(
+        async () => {
+          const { data, error } = await supabase
+            .from('categorias')
+            .select('*')
+            .eq('empresa_id', empresaActual.id)
+            .order('orden', { ascending: true })
 
-      if (error) throw error
-      setCategorias(data || [])
+          if (error) throw error
+          return data || []
+        },
+        'categorias',
+        { empresa_id: empresaActual.id },
+        5 * 60 * 1000 // Cache por 5 minutos
+      )
+      
+      setCategorias(data)
     } catch (error: any) {
-      notifications.show({
-        title: 'Error',
-        message: error.message,
-        color: 'red',
-        icon: <IconX />
-      })
+      NotificationManager.error('Error', 'No se pudieron cargar las categorías')
+      console.error('Error cargando categorías:', error)
     } finally {
       setLoading(false)
     }
@@ -96,81 +104,69 @@ const CategoriasManagement: React.FC = () => {
   const guardarCategoria = async (values: typeof form.values) => {
     if (!empresaActual?.id) return
 
-    setLoading(true)
     try {
       const categoriaData = {
         ...values,
         empresa_id: empresaActual.id
       }
 
-      let error
-      if (editingCategoria) {
-        // Actualizar
-        const result = await supabase
-          .from('categorias')
-          .update(categoriaData)
-          .eq('id', editingCategoria.id)
-        error = result.error
-      } else {
-        // Crear
-        const result = await supabase
-          .from('categorias')
-          .insert(categoriaData)
-        error = result.error
-      }
+      await NotificationManager.loading(
+        editingCategoria ? 'Actualizando categoría...' : 'Creando categoría...',
+        editingCategoria ? 
+          supabase
+            .from('categorias')
+            .update(categoriaData)
+            .eq('id', editingCategoria.id)
+            .then(({ error }) => {
+              if (error) throw error
+            }) :
+          supabase
+            .from('categorias')
+            .insert(categoriaData)
+            .then(({ error }) => {
+              if (error) throw error
+            }),
+        {
+          success: `Categoría ${editingCategoria ? 'actualizada' : 'creada'} exitosamente`,
+          error: 'No se pudo guardar la categoría'
+        }
+      )
 
-      if (error) throw error
-
-      notifications.show({
-        title: 'Éxito',
-        message: `Categoría ${editingCategoria ? 'actualizada' : 'creada'} exitosamente`,
-        color: 'green',
-        icon: <IconCheck />
-      })
-
+      // Invalidar cache
+      supabaseCache.invalidateTable('categorias')
+      
       cerrarModal()
       await cargarCategorias()
     } catch (error: any) {
-      notifications.show({
-        title: 'Error',
-        message: error.message,
-        color: 'red',
-        icon: <IconX />
-      })
-    } finally {
-      setLoading(false)
+      console.error('Error guardando categoría:', error)
     }
   }
 
   const eliminarCategoria = async (categoria: Categoria) => {
     if (!confirm(`¿Estás seguro de eliminar la categoría "${categoria.nombre}"?`)) return
 
-    setLoading(true)
     try {
-      const { error } = await supabase
-        .from('categorias')
-        .delete()
-        .eq('id', categoria.id)
+      await NotificationManager.loading(
+        'Eliminando categoría...',
+        supabase
+          .from('categorias')
+          .delete()
+          .eq('id', categoria.id)
+          .then(({ error }) => {
+            if (error) throw error
+          }),
+        {
+          success: 'Categoría eliminada exitosamente',
+          error: 'No se pudo eliminar la categoría'
+        }
+      )
 
-      if (error) throw error
-
-      notifications.show({
-        title: 'Éxito',
-        message: 'Categoría eliminada exitosamente',
-        color: 'green',
-        icon: <IconCheck />
-      })
-
+      // Invalidar cache
+      supabaseCache.invalidateTable('categorias')
+      
       await cargarCategorias()
     } catch (error: any) {
-      notifications.show({
-        title: 'Error',
-        message: error.message,
-        color: 'red',
-        icon: <IconX />
-      })
-    } finally {
-      setLoading(false)
+      console.error('Error eliminando categoría:', error)
     }
   }
 

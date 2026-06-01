@@ -7,7 +7,7 @@
 ### ✨ Características Principales
 
 - **🏢 Multi-Tenant**: Arquitectura multi-empresa, multi-ubicación y multi-usuario
-- **📦 Motor de Inventario Universal (Kardex)**: Sistema unificado de movimientos de inventario
+- **📦 Motor de Inventario Universal**: Sistema unificado de movimientos de inventario
 - **🛍️ POS de Alta Velocidad**: Punto de venta optimizado para atajos de teclado
 - **🔄 Transferencias Inteligentes**: Gestión de stock entre ubicaciones
 - **🔒 Seguridad RLS**: Row Level Security nativo de PostgreSQL
@@ -70,7 +70,7 @@ chmod +x setup.sh
 Ejecutar en orden los siguientes scripts SQL en tu proyecto de Supabase:
 
 1. `database/schema.sql` - Estructura de tablas y RLS
-2. `database/kardex_triggers.sql` - Lógica de Kardex automático
+2. `database/movimientos_triggers.sql` - Lógica de Movimientos automática
 3. `database/seed_data.sql` - Datos iniciales (opcional)
 
 ### 5. Iniciar la Aplicación
@@ -88,11 +88,11 @@ npm run dev
 - **Multi-ubicación**: Cada empresa puede tener múltiples sucursales/almacenes
 - **Multi-usuario**: Roles y permisos por usuario y ubicación
 
-### 📦 Motor de Inventario (Kardex Universal)
+### 📦 Motor de Inventario (Movimientos Universal)
 
 **Concepto clave**: No existen tablas separadas de compras/ventas. Todo cambio de stock se registra en `movimientos_inventario` (Maestro-Detalle).
 
-#### Flujo del Kardex:
+#### Flujo de Movimientos:
 
 1. **Motivos de Movimiento** definen si suma o resta stock (`es_adicion`)
 2. **Movimientos Cabecera** agrupa la operación (Venta, Compra, Ajuste, etc.)
@@ -130,7 +130,7 @@ Interface diseñada para máxima productividad:
 - **Búsqueda inteligente** por SKU o nombre
 - **Validación de stock** en tiempo real
 - **Múltiples métodos de pago**
-- **Generación automática** de movimientos de kardex
+- **Generación automática** de movimientos de inventario
 
 ### 🔄 Módulo de Transferencias
 
@@ -179,7 +179,7 @@ xentrastock/
 │   └── utils/            # Utilidades
 ├── database/
 │   ├── schema.sql        # Estructura DB + RLS
-│   ├── kardex_triggers.sql # Lógica Kardex
+│   ├── movimientos_triggers.sql # Lógica Movimientos
 │   └── seed_data.sql     # Datos iniciales
 └── docs/                 # Documentación
 ```
@@ -193,14 +193,14 @@ xentrastock/
 - **Layout responsive** con Mantine UI
 - **Componente POS** con atajos de teclado
 - **Esquema de base de datos** completo con RLS
-- **Triggers de Kardex** automáticos
+- **Triggers de Movimientos** automáticos
 - **Validaciones de transferencia**
 
 ### 🚧 En Desarrollo
 
 - Módulo de Inventario (CRUD productos/variantes)
 - Módulo de Transferencias (UI completa)
-- Reportes de Kardex
+- Reportes de Movimientos
 - Módulo de Configuración
 - Dashboard principal
 

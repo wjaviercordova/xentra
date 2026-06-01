@@ -31,7 +31,9 @@ import {
   IconTags,
   IconTruck,
   IconBox,
-  IconBarcode
+  IconBarcode,
+  IconAdjustments,
+  IconShield
 } from '@tabler/icons-react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useAuthStore } from '@/stores'
@@ -54,13 +56,38 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 
   const menuItems = [
     {
-      label: 'Punto de Venta',
+      label: '🏪 Punto de Venta',
       icon: IconShoppingCart,
       path: '/pos',
       color: 'blue'
     },
     {
-      label: 'Mantenimiento',
+      label: '📦 Inventario',
+      icon: IconPackage,
+      color: 'green',
+      submenu: [
+        {
+          label: 'Stock Actual',
+          icon: IconBox,
+          path: '/stocks',
+          color: 'green'
+        },
+        {
+          label: 'Movimientos de SKUs',
+          icon: IconBarcode,
+          path: '/movimientos',
+          color: 'cyan'
+        },
+        {
+          label: 'Transferencias',
+          icon: IconTransfer,
+          path: '/transferencias',
+          color: 'orange'
+        }
+      ]
+    },
+    {
+      label: '🔧 Mantenimiento',
       icon: IconSettings,
       color: 'teal',
       submenu: [
@@ -71,19 +98,13 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           color: 'teal'
         },
         {
-          label: 'Proveedores',
-          icon: IconTruck,
-          path: '/mantenimiento/proveedores',
-          color: 'teal'
-        },
-        {
           label: 'Productos',
           icon: IconBox,
           path: '/mantenimiento/productos',
           color: 'teal'
         },
         {
-          label: 'Variantes',
+          label: 'SKUs/Variantes',
           icon: IconBarcode,
           path: '/mantenimiento/variantes',
           color: 'teal'
@@ -97,22 +118,47 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       ]
     },
     {
-      label: 'Inventario',
-      icon: IconPackage,
-      path: '/inventario',
-      color: 'green'
-    },
-    {
-      label: 'Transferencias',
-      icon: IconTransfer,
-      path: '/transferencias',
-      color: 'orange'
-    },
-    {
-      label: 'Reportes',
+      label: '📊 Reportes',
       icon: IconReport,
       path: '/reportes',
       color: 'purple'
+    },
+    {
+      label: '⚙️ Configuración',
+      icon: IconAdjustments,
+      color: 'gray',
+      submenu: [
+        {
+          label: '🏢 Empresa',
+          icon: IconSettings,
+          path: '/configuracion/empresa',
+          color: 'blue'
+        },
+        {
+          label: '👥 Usuarios',
+          icon: IconUser,
+          path: '/configuracion/usuarios',
+          color: 'green'
+        },
+        {
+          label: '🎛️ Atributos Dinámicos',
+          icon: IconTags,
+          path: '/configuracion/atributos',
+          color: 'indigo'
+        },
+        {
+          label: '🏷️ Etiquetas/Códigos',
+          icon: IconBarcode,
+          path: '/configuracion/etiquetas',
+          color: 'orange'
+        },
+        {
+          label: '🔐 Permisos',
+          icon: IconShield,
+          path: '/configuracion/permisos',
+          color: 'red'
+        }
+      ]
     }
   ]
 
